@@ -1,4 +1,4 @@
-// Copyright 2020 <LinkIvan333>
+// Copyright 2020 <>
 #include <map>
 #include <string>
 #pragma once

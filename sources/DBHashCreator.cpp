@@ -1,4 +1,4 @@
-// Copyright 2020 <LinkIvan333>
+// Copyright 2020 <>
 
 #include <DBHashCreator.hpp>
 #include <logs.hpp>
