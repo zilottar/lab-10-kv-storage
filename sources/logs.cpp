@@ -1,8 +1,7 @@
-// Copyright 2020 <>
+// Copyright 2018 Your Name <your_email>
 
-#include <DBHashCreator.hpp>
+#include <main.hpp>
 #include <logs.hpp>
-#include <constants.hpp>
 
 namespace logging = boost::log;
 namespace src = boost::log::sources;
@@ -10,46 +9,41 @@ namespace expr = boost::log::expressions;
 namespace keywords = boost::log::keywords;
 namespace sinks = boost::log::sinks;
 
-void logs::logInFile() {
-  boost::log::core::get()->add_global_attribute(
-      "TimeStamp", boost::log::attributes::local_clock());
+void logs::logInFile()
+{ 
+    logging::add_file_log( 
+            keywords::file_name = "/log/info.log",
+            keywords::rotation_size = 256 * 1024 * 1024, 
+            keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0), 
+            keywords::filter = logging::trivial::severity >= logging::trivial::info, 
+            keywords::format = 
+                    (expr::stream 
+                            << boost::posix_time ::second_clock::local_time() 
+                            << " : <" << logging ::trivial::severity 
+                            << "> " << expr::smessage)); 
 
-  auto sinkFile = boost::log::add_file_log(
-      keywords::file_name = "logs/logs.log",
-      keywords::rotation_size = 128 * 1024 * 1024,
-      keywords::format =
-          (boost::log::expressions::stream
-  << boost::log::expressions::format_date_time<
-  boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S")
-  << ": <" << boost::log::trivial::severity << "> "
-  << boost::log::expressions::smessage));
-  sinkFile->set_filter(logging::trivial::severity >= logging::trivial::info);
-  auto sinkConsole = logging::add_console_log(
-      std::cout,
-      keywords::format =
-  (expr::stream << expr::format_date_time<boost::posix_time::ptime>(
-      "TimeStamp", "%Y-%m-%d %H:%M:%S")
-  << ": <" << logging::trivial::severity << "> "
-  << expr::smessage));
-  sinkConsole->set_filter(logging::trivial::severity >= logging::trivial::info);
 
-  logging::add_common_attributes();
+    logging::add_file_log(
+            keywords::file_name = "/log/trace.log", 
+            keywords::rotation_size = 256 * 1024 * 1024,
+            keywords::time_based_rotation = sinks::file ::rotation_at_time_point(0, 0, 0),
+            keywords::filter = logging::trivial::severity >= logging::trivial::trace,
+            keywords::format =
+                    (expr::stream
+                            << boost::posix_time ::second_clock::local_time()
+                            << " : <" << logging::trivial::severity
+                            << "> " << expr::smessage));
+}
+
+void logs::logInfo(const std::string &key, const std::string &hash) 
+{
+    BOOST_LOG_TRIVIAL(info) << "Thread with ID: " << std::this_thread::get_id() 
+                            << " Key: " << key << " Hash: " << hash << std::endl;
 }
 
 
-void logs::logInfo(const std::string &key, const std::string &hash,
-                   const std::string &value, const int &lvl) {
-    switch (lvl){
-      case 0:
-        BOOST_LOG_TRIVIAL(info) << "Key: " << key << " hash: " << hash
-                            << " , where value was " << value << std::endl;
-      break;
-      case 1:
-        BOOST_LOG_TRIVIAL(warning) << "Key: " << key << " hash: " << hash
-                            << " , where value was " << value << std::endl;
-      break;
-      case 2:
-        BOOST_LOG_TRIVIAL(error) << "Key: " << key << " hash: " << hash
-                            << " , where value was " << value << std::endl;
-  }
+void logs::logTrace(const std::string &key, const std::string &value) 
+{
+    BOOST_LOG_TRIVIAL(trace) << "Thread with ID: " << std::this_thread::get_id()
+                             << " Key: " << key << " Value: " << value << std::endl;
 }

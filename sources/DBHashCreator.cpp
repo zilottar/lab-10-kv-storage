@@ -1,115 +1,116 @@
-// Copyright 2020 <>
-
+// Copyright 2018 Your Name <your_email>
 #include <DBHashCreator.hpp>
+#include <constants.hpp>
 #include <logs.hpp>
 
-FHandlerContainer DBHashCreator::openDB
-        (const FDescriptorContainer &descriptors) {
-    FHandlerContainer handlers;
+FHandlerContainer DBHashCreator::openDB (const FDescriptorContainer &descriptors) {
+    FHandlerContainer handlers;//FHandlerContainer-контейнер
     std::vector < rocksdb::ColumnFamilyHandle * > newHandles;
-    rocksdb::DB *dbStrPtr;
-    rocksdb::DB *new_dbStrPtr;
+    rocksdb::DB *dbStrPtr; //Создание указателя dbStrPtr на DB
 
-    rocksdb::Status status =
-            rocksdb::DB::Open(
-                    options,
-                    _path,
-                    descriptors,
-                    &newHandles,
-                    &dbStrPtr);
-    status = rocksdb::DB::Open(
-        options,
-        _new_path,
-        &new_dbStrPtr);
-    if (!status.ok()) std::cerr << status.ToString() << std::endl;
-    _db.reset(dbStrPtr);
-    _new_db.reset(new_dbStrPtr);
+    rocksdb::Status status = rocksdb::DB::Open(rocksdb::DBOptions(), _path, descriptors, &newHandles, &dbStrPtr);
+    assert(status.ok()); //if 0 -> exit
+
+    _db.reset(dbStrPtr);//очищает указатель _db и записывает dbStrPtr в _db
+
     for (rocksdb::ColumnFamilyHandle *ptr : newHandles) {
-        handlers.emplace_back(ptr);
+        handlers.emplace_back(ptr); 
     }
+
     return handlers;
 }
 
+
+
+
+
+
+
 FDescriptorContainer DBHashCreator::getFamilyDescriptors() {
-    std::vector <std::string> family;
+    rocksdb::Options options; 
+    std::vector<std::string> family;
     FDescriptorContainer descriptors;
-    rocksdb::Status status =
-            rocksdb::DB::ListColumnFamilies(options,
-                                            _path,
-                                            &family);
-  if (!status.ok()) {
-      std::cerr << status.ToString() << std::endl;
+    rocksdb::Status status = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), _path,&family);  
+    
+    assert(status.ok()); //if 0 -> exit
+    
+   
+
+    for (const std::string &familyName : family) //перебор элементов вектора family и заносим каждый элемент в descriptors
+    {
+        descriptors.emplace_back(familyName, rocksdb::ColumnFamilyOptions());
+        
     }
-    for (const std::string &familyName : family) {
-        descriptors.emplace_back(familyName,
-                                 rocksdb::ColumnFamilyOptions());
-    }
-    return descriptors;
+    return descriptors; //возвращает список семейств столбцов
 }
 
 StrContainer DBHashCreator::getStrs(rocksdb::ColumnFamilyHandle *family) {
-    boost::unordered_map <std::string, std::string> dbCase;
-    std::unique_ptr <rocksdb::Iterator>
-            it(_db->NewIterator(rocksdb::ReadOptions(), family));
+    boost::unordered_map <std::string, std::string> dbCase;// создание контейнер(map) dbCase
+    
+    std::unique_ptr <rocksdb::Iterator> it (_db->NewIterator(rocksdb::ReadOptions(), family)); 
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
         std::string key = it->key().ToString();
         std::string value = it->value().ToString();
         dbCase[key] = value;
     }
-    return dbCase;
+    return dbCase; /
 }
 
-void DBHashCreator::getHash
-        (rocksdb::ColumnFamilyHandle *family, StrContainer strContainer) {
-    std::string new_value, value;
-    for (const auto & it : strContainer) {
-        std::string hash = picosha2::hash256_hex_string(it.first + it.second);
-        rocksdb::Status status = _new_db->Put(rocksdb::WriteOptions(),
-                                          family,
-                                          it.first,
-                                          hash);
-      status = _new_db->Get(rocksdb::ReadOptions(), it.first, &new_value);
-      status = _db->Get(rocksdb::ReadOptions(), it.first, &value);
-      if (!status.ok()) std::cerr << status.ToString() << std::endl;
-      logs::logInfo(it.first, new_value, value, _logLVL);
+void DBHashCreator::getHash (rocksdb::ColumnFamilyHandle *family, StrContainer strContainer) {
+    for (auto it = strContainer.begin(); it != strContainer.end(); ++it) {
+        std::string hash = picosha2::hash256_hex_string(it->first + it->second);
+        std::cout << "key: " << it->first << " hash: " << hash << std::endl;
+        logs::logInfo(it->first, hash);
+        rocksdb::Status status = _db->Put(rocksdb::WriteOptions(),family, it->first, hash); 
+        assert(status.ok());
+
     }
 }
 
-void DBHashCreator::startHash
-        (FHandlerContainer *handlers,
-                std::list <StrContainer> *StrContainerList) {
+
+
+
+void DBHashCreator::startHash (FHandlerContainer *handlers, std::list <StrContainer> *StrContainerList) {
     while (!handlers->empty()) {
         _mutex.lock();
-        if (handlers->empty()) {
-            _mutex.unlock();
-            continue;
+        if (handlers->empty()) { 
+            _mutex.unlock(); 
+            continue; 
         }
         auto &family = handlers->front();
-        handlers->pop_front();
+        handlers->pop_front(); 
 
-        StrContainer strContainer = StrContainerList->front();
-        StrContainerList->pop_front();
+        StrContainer strContainer = StrContainerList->front(); 
+        StrContainerList->pop_front();  
         _mutex.unlock();
-        getHash(family.get(), strContainer);
+        getHash(family.get(), strContainer); 
     }
 }
 
-void DBHashCreator::startThreads() {
-    auto descriptors = getFamilyDescriptors();
-    auto handlers = openDB(descriptors);
 
-    std::list <StrContainer> StrContainerList;
 
-    for (const auto &family : handlers) {
-        StrContainerList.push_back(
-                getStrs(family.get()));
+void DBHashCreator::startThreads()
+{
+    auto deskriptors = getFamilyDescriptors(); 
+    auto handlers = openDB(deskriptors); 
+
+    std::list<StrContainer> StrContainerList; 
+
+    for (auto &family : handlers) 
+    {
+        StrContainerList.push_back(getStrs(family.get())); 
+    
+    
     }
-    boost::thread_group threads;
-    for (size_t i = 0; i < _threadCountHash; ++i) {
-      threads.add_thread(new boost::thread(&DBHashCreator::startHash,
-                            this,
-                            &handlers,
-                            &StrContainerList));
+
+    std::vector<std::thread> threads; 
+    threads.reserve(_threadCountHash); 
+    for (size_t i = 0; i < _threadCountHash; ++i)
+    {
+        threads.emplace_back(std::thread(&DBHashCreator::startHash,this,&handlers, &StrContainerList)); 
     }
-    threads.join_all();
+    for (auto &th : threads)
+    {
+        th.join(); 
+    }
 }

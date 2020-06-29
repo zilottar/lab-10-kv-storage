@@ -1,10 +1,12 @@
 // Copyright 2020 <>
-#include <map>
-#include <string>
-#pragma once
-const std::size_t DEFAULT_THREAD_HASH = boost::thread::hardware_concurrency();
-const char DEFAULT_LOG_LEVEL[] = "error";
-const char DEFAULT_OUTPUT_PATH[] = "/home/ivan/DB/new_db";
-const std::map <std::string, int> log_lvls =
-    {{"info", 0}, {"warning", 1}, {"error", 2}};
+#ifndef UNTITLED_CONSTANTS_H
+#define UNTITLED_CONSTANTS_H
+const std::string CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+static const size_t KEY_LENGTH = 1;
+static const size_t VALUE_LENGTH = 1;
+static const size_t FAMILY_NAME_LENGTH = 1;
+static const size_t FAMILY_COUNT = 3;
+static const size_t STR_COUNT = 5;
+static const size_t DEFAULT_THREAD_HASH = 2;
+#endif //UNTITLED_CONSTANTS_H
 
