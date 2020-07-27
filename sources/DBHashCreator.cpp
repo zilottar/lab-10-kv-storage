@@ -4,14 +4,14 @@
 #include <logs.hpp>
 
 FHandlerContainer DBHashCreator::openDB (const FDescriptorContainer &descriptors) {
-    FHandlerContainer handlers;//FHandlerContainer-контейнер
+    FHandlerContainer handlers;
     std::vector < rocksdb::ColumnFamilyHandle * > newHandles;
-    rocksdb::DB *dbStrPtr; //Создание указателя dbStrPtr на DB
+    rocksdb::DB *dbStrPtr;
 
     rocksdb::Status status = rocksdb::DB::Open(rocksdb::DBOptions(), _path, descriptors, &newHandles, &dbStrPtr);
     assert(status.ok()); //if 0 -> exit
 
-    _db.reset(dbStrPtr);//очищает указатель _db и записывает dbStrPtr в _db
+    _db.reset(dbStrPtr);
 
     for (rocksdb::ColumnFamilyHandle *ptr : newHandles) {
         handlers.emplace_back(ptr); 
@@ -19,6 +19,7 @@ FHandlerContainer DBHashCreator::openDB (const FDescriptorContainer &descriptors
 
     return handlers;
 }
+
 
 
 
@@ -36,16 +37,16 @@ FDescriptorContainer DBHashCreator::getFamilyDescriptors() {
     
    
 
-    for (const std::string &familyName : family) //перебор элементов вектора family и заносим каждый элемент в descriptors
+    for (const std::string &familyName : family)
     {
         descriptors.emplace_back(familyName, rocksdb::ColumnFamilyOptions());
         
     }
-    return descriptors; //возвращает список семейств столбцов
+    return descriptors;
 }
 
 StrContainer DBHashCreator::getStrs(rocksdb::ColumnFamilyHandle *family) {
-    boost::unordered_map <std::string, std::string> dbCase;// создание контейнер(map) dbCase
+    boost::unordered_map <std::string, std::string> dbCase;
     
     std::unique_ptr <rocksdb::Iterator> it (_db->NewIterator(rocksdb::ReadOptions(), family)); 
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
@@ -99,8 +100,6 @@ void DBHashCreator::startThreads()
     for (auto &family : handlers) 
     {
         StrContainerList.push_back(getStrs(family.get())); 
-    
-    
     }
 
     std::vector<std::thread> threads; 
